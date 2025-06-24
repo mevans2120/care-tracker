@@ -1,124 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pdf from 'pdf-parse';
 
-// Types matching your existing frontend interfaces
-interface TaskData {
+// Generate a simple UUID
+function generateId(): string {
+  return 'task_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Build prompt for Claude API with PDF processing - using exact TypeScript interfaces
+function buildPromptWithPdf(base64Content: string, procTime: string = "2025-06-24T08:00:00Z"): string {
+  return `Read the provided PDF file and extract medical discharge instructions. Return ONLY a valid JSON object that matches this exact TypeScript interface:
+
+interface ProcessingResult {
+  tasks: CareTask[];
+  emergencyInfo: EmergencyInfo;
+  medications: Medication[];
+  restrictions: Restriction[];
+  confidence: number;
+  processingTime: number;
+}
+
+interface CareTask {
   id: string;
   title: string;
   description: string;
-  type: string;
-  status: string;
-  actionType: string;
-  category: string;
-  scheduledTime: string;
-  estimatedDuration: number;
+  type: "medication" | "appointment" | "exercise" | "wound_care" | "diet" | "activity_restriction" | "monitoring" | "education" | "other";
+  status: "pending" | "in_progress" | "completed" | "skipped" | "overdue";
+  actionType: "do" | "do_not";
+  scheduledTime: string; // ISO date string
+  estimatedDuration: number; // minutes
   instructions: string[];
   reminders: any[];
-  dependencies: any[];
+  dependencies: string[];
+  category: "immediate" | "short_term" | "medium_term" | "long_term";
   metadata: {
     source: string;
     confidence: number;
-    originalText: string;
-    pageNumber: string;
+    originalText?: string;
+    pageNumber?: number;
   };
 }
 
-interface UploadResponse {
-  tasks: TaskData[];
-  medications: any[];
+interface Medication {
+  id: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  sideEffects?: string[];
+  interactions?: string[];
 }
 
-// PDF text extraction function
-async function extractPdfText(pdfBuffer: Buffer): Promise<string> {
-  try {
-    const data = await pdf(pdfBuffer);
-    return data.text;
-  } catch (error) {
-    console.error('PDF extraction error:', error);
-    throw new Error('Failed to extract text from PDF');
-  }
+interface EmergencyInfo {
+  warningSignsTitle: string;
+  warningSignsDescription: string;
+  warningSignsList: string[];
+  emergencyContact: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  doctorContact: {
+    name: string;
+    phone: string;
+    specialty: string;
+  };
 }
 
-// Build prompt for Claude API
-function buildPrompt(pdfText: string, procTime: string = "2025-06-21T08:00:00Z"): string {
-  return `You are a helpful assistant extracting structured tasks and medications from medical discharge instructions.
-    
-Please read the following text and extract two types of objects:
-1. "tasks" activity restrictions or instructions
-2. "medications" prescribed medications
-
-Use the following enums:
-// Enums
-export enum TaskType {
-  MEDICATION = 'medication',
-  APPOINTMENT = 'appointment',
-  EXERCISE = 'exercise',
-  WOUND_CARE = 'wound_care',
-  DIET = 'diet',
-  ACTIVITY_RESTRICTION = 'activity_restriction',
-  MONITORING = 'monitoring',
-  EDUCATION = 'education',
-  OTHER = 'other'
+interface Restriction {
+  id: string;
+  type: "activity" | "dietary" | "medication" | "lifestyle";
+  description: string;
+  duration: string;
+  severity: "mild" | "moderate" | "severe";
+  consequences?: string;
 }
 
-export enum TaskStatus {
-  PENDING = 'pending',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  SKIPPED = 'skipped',
-  OVERDUE = 'overdue'
+Extract all care instructions, restrictions, and medications from the PDF. The procedure time is: ${procTime}
+
+Return ONLY the JSON object, no other text or explanation.`;
 }
 
-export enum TaskActionType {
-  DO = 'do',        // Green - things patient should do
-  DO_NOT = 'do_not' // Red - things patient should not do
-}
-
-export enum TaskCategory {
-  IMMEDIATE = 'immediate', // 0-24 hours
-  SHORT_TERM = 'short_term', // 1-7 days
-  MEDIUM_TERM = 'medium_term', // 1-4 weeks
-  LONG_TERM = 'long_term' // 1+ months
-}
-
-Each task should follow this format:
-
-\`\`\`json
-{
-  "id": "auto-generated-uuid",
-  "title": "Short summary (e.g. No Driving Restriction)",
-  "description": "Full sentence describing the action (e.g. Do not drive for 24 hours)",
-  "type": "TaskType",
-  "status": "pending",
-  "actionType": "TaskActionType",
-  "category": "IMMEDIATE",
-  "scheduledTime": "${procTime}",
-  "estimatedDuration": 1,
-  "instructions": ["List of explicit actions or warnings stated in the pdf"],
-  "reminders": [],
-  "dependencies": [],
-  "metadata": {
-    "source": "discharge_instructions",
-    "confidence": 0.95,
-    "originalText": "Original text snippet",
-    "pageNumber": "1"
-  }
-}\`\`\`
-
-The time of the procedure is: ${procTime}
-Here is the PDF text:
-\`\`\`${pdfText.substring(0, 8000)}\`\`\`
-Do not modify any of the message text.
-Only process the text above, and give a clean JSON result with "tasks" and "medications" arrays.`;
-}
-
-// Call Claude API
-async function callClaude(prompt: string): Promise<any> {
+// Call Claude API with PDF
+async function callClaudeWithPdf(base64Content: string, procTime: string): Promise<any> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error('Missing Anthropic API Key');
   }
 
+  console.log('Calling Claude API with PDF content...');
+  
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -127,37 +97,145 @@ async function callClaude(prompt: string): Promise<any> {
       'content-type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'claude-3-7-sonnet-20250219',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 8000,
       messages: [
-        { role: 'user', content: prompt }
+        { 
+          role: 'user', 
+          content: [
+            {
+              type: 'text',
+              text: buildPromptWithPdf(base64Content, procTime)
+            },
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: base64Content
+              }
+            }
+          ]
+        }
       ]
     })
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Claude API error:', response.status, errorText);
     throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('Claude API response received');
+  return result;
 }
 
-// Extract JSON from Claude response
-function extractJsonFromClaude(claudeResponseText: string): any {
+// Extract JSON from Claude response with better error handling
+function extractJsonFromClaude(claudeResponseText: string, procTime: string): any {
   let text = claudeResponseText.trim();
   
+  console.log('Raw Claude response:', text.substring(0, 200) + '...');
+  
+  // Remove code blocks if present
   if (text.startsWith('```json')) {
     text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
   } else if (text.startsWith('```')) {
     text = text.replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
   }
   
-  return JSON.parse(text);
+  // Look for JSON object in the response
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    text = jsonMatch[0];
+  }
+  
+  // If still not valid JSON, try to find the first { and last }
+  if (!text.startsWith('{')) {
+    const startIndex = text.indexOf('{');
+    const endIndex = text.lastIndexOf('}');
+    if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+      text = text.substring(startIndex, endIndex + 1);
+    }
+  }
+  
+  console.log('Extracted JSON text:', text.substring(0, 200) + '...');
+  
+  try {
+    const parsed = JSON.parse(text);
+    
+    // Validate the structure matches ProcessingResult
+    if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+      throw new Error('Invalid response: missing or invalid tasks array');
+    }
+    
+    // Ensure each task has required fields and convert scheduledTime to Date objects
+    parsed.tasks = parsed.tasks.map((task: any) => ({
+      ...task,
+      id: task.id || generateId(),
+      scheduledTime: new Date(task.scheduledTime || procTime),
+      reminders: task.reminders || [],
+      dependencies: task.dependencies || [],
+      metadata: {
+        source: 'discharge_instructions',
+        confidence: task.metadata?.confidence || 0.9,
+        originalText: task.metadata?.originalText || task.description,
+        pageNumber: task.metadata?.pageNumber || 1,
+        ...task.metadata
+      }
+    }));
+    
+    // Ensure medications array exists
+    if (!parsed.medications) {
+      parsed.medications = [];
+    }
+    
+    // Ensure restrictions array exists
+    if (!parsed.restrictions) {
+      parsed.restrictions = [];
+    }
+    
+    // Ensure emergencyInfo exists with defaults
+    if (!parsed.emergencyInfo) {
+      parsed.emergencyInfo = {
+        warningSignsTitle: 'When to Call 911',
+        warningSignsDescription: 'Call emergency services immediately if you experience:',
+        warningSignsList: [
+          'Severe chest pain or pressure',
+          'Difficulty breathing',
+          'Excessive bleeding',
+          'Signs of infection (fever, chills)'
+        ],
+        emergencyContact: {
+          name: 'Emergency Services',
+          phone: '911',
+          relationship: 'emergency'
+        },
+        doctorContact: {
+          name: 'Your Doctor',
+          phone: 'Contact your healthcare provider',
+          specialty: 'General'
+        }
+      };
+    }
+    
+    // Set confidence and processing time
+    parsed.confidence = parsed.confidence || 0.9;
+    parsed.processingTime = parsed.processingTime || 1000;
+    
+    return parsed;
+    
+  } catch (error) {
+    console.error('JSON parse error:', error);
+    console.error('Failed to parse text:', text);
+    throw new Error(`Failed to parse Claude response as JSON: ${error}`);
+  }
 }
 
 // Main API handler
 export async function POST(request: NextRequest) {
-  console.log('Received PDF upload request to Vercel function');
+  console.log('=== PDF Upload API Called (Claude PDF Processing) ===');
   
   try {
     const data = await request.json();
@@ -168,28 +246,24 @@ export async function POST(request: NextRequest) {
     const uploadId = metadata.uploadId;
     
     console.log(`Processing upload ${uploadId} for file ${metadata.fileName}`);
+    console.log(`File size: ${metadata.fileSize} bytes`);
     
-    // Step 2: Decode base64 PDF
+    // Step 2: Get base64 PDF content
     const base64Content = fileData.base64Content;
-    const pdfBuffer = Buffer.from(base64Content, 'base64');
+    console.log(`Base64 content length: ${base64Content.length} characters`);
     
-    // Step 3: Extract PDF text
-    const pdfText = await extractPdfText(pdfBuffer);
-    console.log(`Extracted ${pdfText.length} characters from PDF`);
+    // Step 3: Use Claude to read PDF and extract tasks directly
+    const procTime = new Date().toISOString();
+    const claudeResponse = await callClaudeWithPdf(base64Content, procTime);
     
-    // Step 4: Generate prompt for Claude
-    const prompt = buildPrompt(pdfText);
-    
-    // Step 5: Call Claude API
-    const claudeResponse = await callClaude(prompt);
-    
-    // Step 6: Parse Claude response
+    // Step 4: Parse Claude response
     const rawText = claudeResponse.content[0].text;
-    const parsedData = extractJsonFromClaude(rawText);
+    console.log(`Claude response: ${rawText.length} characters`);
     
-    console.log(`Successfully processed PDF, extracted ${parsedData.tasks?.length || 0} tasks`);
+    const parsedData = extractJsonFromClaude(rawText, procTime);
+    console.log(`Successfully processed PDF with Claude, extracted ${parsedData.tasks?.length || 0} tasks`);
     
-    // Step 7: Return structured response
+    // Step 5: Return structured response matching ProcessingResult interface
     return NextResponse.json(parsedData, { status: 200 });
     
   } catch (error) {

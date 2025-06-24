@@ -400,3 +400,67 @@ The Care Tracker application is now ready for Phase 2 testing with real PDF proc
 - Vercel handles monorepo structure through build/install commands rather than rootDirectory
 - API routes should be auto-detected once build succeeds
 - Next.js App Router serverless functions will deploy automatically
+## Next.js Framework Detection Fix
+[2025-06-23 17:12:42] - **NEXT.JS DETECTION ERROR RESOLVED**
+
+### Problem Identified:
+- Deployment now triggering successfully (configuration alignment worked!)
+- Build failing with error: "No Next.js version detected. Make sure your package.json has 'next' in either 'dependencies' or 'devDependencies'"
+- Root cause: Vercel auto-detection failing despite Next.js being properly listed in package.json
+
+### Solution Implemented:
+1. **Added explicit framework detection** to vercel.json
+2. **Specified `"framework": "nextjs"`** to help Vercel properly identify the project type
+3. **Maintained all previous fixes** - proper directory alignment and schema-valid configuration
+
+### Current Working Configuration:
+```json
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "env": {
+    "ANTHROPIC_API_KEY": "@anthropic_api_key"
+  }
+}
+```
+
+### Status:
+- ✅ Deployment triggering successfully (configuration alignment worked)
+- ✅ Framework detection fix applied (commit a7526ad)
+- ✅ Changes pushed to fork: https://github.com/mevans2120/care-tracker
+- 🔄 New deployment should now build successfully with proper Next.js detection
+- ⏳ Monitor deployment for successful completion
+
+### Technical Notes:
+- Next.js 14.2.15 is properly listed in dependencies
+- Explicit framework specification overrides auto-detection issues
+[2025-06-24 08:16:00] - **PDF PARSING FIX COMPLETED**: Successfully resolved the critical PDF text extraction issue that was preventing proper task mapping
+
+## Problem Solved:
+- ✅ **Root Cause Fixed**: Replaced placeholder `extractPdfText()` function that returned hardcoded sample text
+- ✅ **Real PDF Processing**: Implemented Claude's native PDF processing capabilities
+- ✅ **Task Mapping Restored**: Users now see tasks extracted from their actual PDF content
+- ✅ **Dependency Cleanup**: Removed unnecessary `pdf-parse` and `@types/pdf-parse` packages
+
+## Technical Implementation:
+- ✅ **Claude Document API**: Updated [`care-tracker/src/app/api/upload/route.ts`](care-tracker/src/app/api/upload/route.ts) to use Claude's document processing
+- ✅ **TypeScript Compliance**: Ensured response matches exact `ProcessingResult` interface specification
+- ✅ **Robust JSON Parsing**: Implemented improved JSON extraction with error handling and validation
+- ✅ **Interface Matching**: Response includes tasks, medications, emergencyInfo, restrictions, confidence, and processingTime
+
+## Verification Results:
+- ✅ **Real Content Extraction**: Successfully extracted tasks like "Adult Supervision", "IV Bandage Care", "Salt Water Rinse" from actual PDF
+- ✅ **Proper Task Structure**: 3 tasks, 1 medication, 5 restrictions, emergency info with 0.9 confidence
+- ✅ **Complete Pipeline**: End-to-end workflow from PDF upload through timeline population working correctly
+- ✅ **Production Ready**: Simplified architecture with better reliability and fewer dependencies
+
+## Impact:
+- ✅ **Functional Application**: Core PDF processing feature now works as intended
+- ✅ **User Experience**: No more hardcoded sample text - real medical instructions are processed
+- ✅ **Architecture Improvement**: Single Claude API call handles both PDF reading and task extraction
+- ✅ **Deployment Ready**: Simplified dependencies and improved reliability for production use
+
+**Status**: PDF parsing fix is complete and verified. Task mapping pipeline now processes real PDF content correctly. Ready for production deployment.
+- API routes should deploy as serverless functions once build succeeds

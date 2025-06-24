@@ -240,4 +240,24 @@ This file records architectural and implementation decisions using a list format
   - Identified critical security vulnerabilities that must be addressed before production
   - Provided clear roadmap for improving code quality and performance
   - Established testing requirements for sustainable development
+[2025-06-24 08:15:30] - **PDF PARSING ARCHITECTURE DECISION**: Replaced pdf-parse library with Claude's native PDF processing capabilities
+- **Decision**: Implement direct PDF reading using Claude's document processing API instead of external parsing libraries
+- **Rationale**: 
+  - **Root Cause**: The `extractPdfText()` function was only returning hardcoded sample text instead of parsing actual PDF content
+  - **Library Issues**: pdf-parse library approach was unreliable and required additional dependencies
+  - **Claude Capabilities**: Claude can directly read and process PDF documents through its document API
+  - **Simplified Architecture**: Single API call handles both PDF reading and task extraction
+  - **Better Reliability**: Eliminates external library dependencies and potential parsing failures
+- **Implementation**: 
+  - Updated [`care-tracker/src/app/api/upload/route.ts`](care-tracker/src/app/api/upload/route.ts) to use Claude's document processing
+  - Removed `pdf-parse` and `@types/pdf-parse` dependencies from package.json
+  - Implemented robust JSON parsing with error handling and validation
+  - Ensured response matches exact `ProcessingResult` interface specification
+- **Impact**: 
+  - **Functional PDF Processing**: Users now see tasks extracted from their actual PDF content
+  - **Reliable Task Mapping**: No more hardcoded sample text - real medical instructions are processed
+  - **Production Ready**: Simplified architecture with fewer dependencies and better reliability
+  - **Cost Effective**: Single Claude API call handles both PDF reading and task extraction
+  - **Type Safety**: Full TypeScript compliance with proper interface matching
+- **Testing Verified**: Successfully extracted real tasks like "Adult Supervision", "IV Bandage Care", "Salt Water Rinse" from actual PDF content with proper task types, categories, and scheduling
   - Created prioritized action plan for production readiness

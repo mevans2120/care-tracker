@@ -87,6 +87,10 @@ async function callClaudeWithPdf(base64Content: string, procTime: string): Promi
     throw new Error('Missing Anthropic API Key');
   }
 
+  // Debug logging (remove after fixing)
+  console.log('API Key present:', !!apiKey);
+  console.log('API Key length:', apiKey?.length || 0);
+  console.log('API Key starts with sk-ant:', apiKey?.startsWith('sk-ant-') || false);
   console.log('Calling Claude API with PDF content...');
   
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -123,8 +127,12 @@ async function callClaudeWithPdf(base64Content: string, procTime: string): Promi
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Claude API error:', response.status, errorText);
-    throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+    console.error('Claude API error details:');
+    console.error('- Status:', response.status);
+    console.error('- Status Text:', response.statusText);
+    console.error('- Response Headers:', Object.fromEntries(response.headers.entries()));
+    console.error('- Error Body:', errorText);
+    throw new Error(`Claude API error: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
   const result = await response.json();

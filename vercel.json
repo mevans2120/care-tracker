@@ -2,9 +2,13 @@
   "buildCommand": "cd care-tracker && npm run build",
   "outputDirectory": "care-tracker/.next",
   "installCommand": "cd care-tracker && npm install",
+  "rootDirectory": "care-tracker",
   "functions": {
-    "care-tracker/src/app/api/upload/route.ts": {
+    "src/app/api/upload/route.ts": {
       "maxDuration": 60
     }
+  },
+  "env": {
+    "ANTHROPIC_API_KEY": "@anthropic_api_key"
   }
 }

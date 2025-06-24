@@ -318,3 +318,48 @@ The Care Tracker application is now ready for Phase 2 testing with real PDF proc
 - All git operations will now target the user's fork automatically
 
 **Status:** Git repository successfully configured for user's fork with clean history and proper remote setup
+## Vercel Deployment Configuration Fix
+[2025-06-23 17:00:26] - **DEPLOYMENT ISSUE RESOLVED**
+
+### Problem Identified:
+- Vercel deployment failing with error: "The pattern 'care-tracker/src/app/api/upload/route.ts' defined in 'functions' doesn't match any Serverless Functions"
+- Root cause: Vercel configuration was incorrect for monorepo structure where Next.js app is in `care-tracker/` subdirectory
+
+### Solution Implemented:
+1. **Moved vercel.json to repository root** - Vercel expects configuration at repo root for monorepo setups
+2. **Added rootDirectory configuration** - Points Vercel to `care-tracker` as the app root
+3. **Updated function path** - Changed from `care-tracker/src/app/api/upload/route.ts` to `src/app/api/upload/route.ts` (relative to rootDirectory)
+4. **Configured build commands** - Proper commands for subdirectory structure:
+   - `buildCommand`: `cd care-tracker && npm run build`
+   - `installCommand`: `cd care-tracker && npm install`
+   - `outputDirectory`: `care-tracker/.next`
+
+### Technical Implementation:
+```json
+{
+  "buildCommand": "cd care-tracker && npm run build",
+  "outputDirectory": "care-tracker/.next", 
+  "installCommand": "cd care-tracker && npm install",
+  "rootDirectory": "care-tracker",
+  "functions": {
+    "src/app/api/upload/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "ANTHROPIC_API_KEY": "@anthropic_api_key"
+  }
+}
+```
+
+### Status:
+- ✅ Configuration updated and committed (commit fb37fcd)
+- ✅ Changes pushed to fork: https://github.com/mevans2120/care-tracker
+- 🔄 Vercel deployment should now trigger automatically
+- ⏳ Monitor deployment status in Vercel dashboard
+
+### Next Steps:
+1. Check Vercel dashboard for successful deployment
+2. Verify serverless function is properly detected
+3. Test PDF upload functionality once deployed
+4. Confirm ANTHROPIC_API_KEY environment variable is set in Vercel project settings

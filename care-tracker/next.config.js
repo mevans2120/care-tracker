@@ -9,3 +9,4 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+// Trigger deployment - 2025-06-23 17:04

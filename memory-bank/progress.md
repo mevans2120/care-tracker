@@ -363,3 +363,40 @@ The Care Tracker application is now ready for Phase 2 testing with real PDF proc
 2. Verify serverless function is properly detected
 3. Test PDF upload functionality once deployed
 4. Confirm ANTHROPIC_API_KEY environment variable is set in Vercel project settings
+## Vercel Schema Validation Fix
+[2025-06-23 17:06:12] - **SCHEMA VALIDATION ERROR RESOLVED**
+
+### Problem Identified:
+- Vercel deployment failing with schema validation error: "should NOT have additional property 'rootDirectory'"
+- Root cause: `rootDirectory` is not a valid property in vercel.json schema
+
+### Solution Implemented:
+1. **Removed invalid `rootDirectory` property** from vercel.json
+2. **Kept valid monorepo configuration**:
+   - `buildCommand`: `cd care-tracker && npm run build`
+   - `installCommand`: `cd care-tracker && npm install`
+   - `outputDirectory`: `care-tracker/.next`
+   - `env`: Environment variables configuration
+
+### Current Working Configuration:
+```json
+{
+  "buildCommand": "cd care-tracker && npm run build",
+  "outputDirectory": "care-tracker/.next",
+  "installCommand": "cd care-tracker && npm install",
+  "env": {
+    "ANTHROPIC_API_KEY": "@anthropic_api_key"
+  }
+}
+```
+
+### Status:
+- ✅ Schema validation error fixed (commit e4f4c13)
+- ✅ Changes pushed to fork: https://github.com/mevans2120/care-tracker
+- 🔄 New deployment should now pass validation and build successfully
+- ⏳ Monitor deployment status for successful completion
+
+### Technical Notes:
+- Vercel handles monorepo structure through build/install commands rather than rootDirectory
+- API routes should be auto-detected once build succeeds
+- Next.js App Router serverless functions will deploy automatically

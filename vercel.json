@@ -1,8 +1,0 @@
-{
-  "buildCommand": "cd care-tracker && npm run build",
-  "outputDirectory": "care-tracker/.next",
-  "installCommand": "cd care-tracker && npm install",
-  "env": {
-    "ANTHROPIC_API_KEY": "@anthropic_api_key"
-  }
-}

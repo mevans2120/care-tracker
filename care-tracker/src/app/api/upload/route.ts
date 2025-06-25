@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Generate a simple UUID
+// Force deployment to pick up updated environment variable
 function generateId(): string {
   return 'task_' + Math.random().toString(36).substr(2, 9);
 }
@@ -91,6 +92,8 @@ async function callClaudeWithPdf(base64Content: string, procTime: string): Promi
   console.log('API Key present:', !!apiKey);
   console.log('API Key length:', apiKey?.length || 0);
   console.log('API Key starts with sk-ant:', apiKey?.startsWith('sk-ant-') || false);
+  console.log('API Key first 20 chars:', apiKey?.substring(0, 20) || 'undefined');
+  console.log('API Key last 10 chars:', apiKey?.substring(apiKey.length - 10) || 'undefined');
   console.log('Calling Claude API with PDF content...');
   
   const response = await fetch('https://api.anthropic.com/v1/messages', {

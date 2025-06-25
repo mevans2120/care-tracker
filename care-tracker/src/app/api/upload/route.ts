@@ -282,7 +282,15 @@ export async function POST(request: NextRequest) {
     console.log(`Successfully processed PDF with Claude, extracted ${parsedData.tasks?.length || 0} tasks`);
     
     // Step 5: Return structured response matching ProcessingResult interface
-    return NextResponse.json(parsedData, { status: 200 });
+    return NextResponse.json(parsedData, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Deployment-Time': new Date().toISOString()
+      }
+    });
     
   } catch (error) {
     console.error('PDF processing error:', error);
@@ -292,7 +300,15 @@ export async function POST(request: NextRequest) {
       status: 'failed',
       message: 'Failed to process upload.',
       error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    }, {
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Deployment-Time': new Date().toISOString()
+      }
+    });
   }
 }
 

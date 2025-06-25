@@ -51,11 +51,25 @@ export class UploadManager {
       
       logger.info(LogCategory.UPLOAD_LIFECYCLE, 'UploadManager', 'Upload completed successfully', {
         success: response.success,
-        status: response.status
+        status: response.status,
+        hasResult: !!response.result
       }, uploadId);
       
-      // Start status polling if upload was successful
-      if (response.success && onProgress) {
+      // If we have an immediate result, trigger the completion callback
+      if (response.success && response.result && onProgress) {
+        logger.info(LogCategory.UPLOAD_LIFECYCLE, 'UploadManager', 'Immediate result available, triggering completion', {
+          tasksCount: response.result.tasks.length
+        }, uploadId);
+        
+        onProgress({
+          uploadId,
+          status: 'completed',
+          progress: 100,
+          message: 'Processing complete!',
+          result: response.result,
+        });
+      } else if (response.success && onProgress) {
+        // Fallback to status polling for legacy responses
         this.startStatusPolling(uploadId, onProgress);
       }
 
@@ -299,25 +313,39 @@ export class UploadManager {
         hasTimeFrames: !!result.time_frames,
         timeFramesCount: result.time_frames?.length || 0,
         hasParsedContent: !!result.parsed?.content?.[0]?.text,
-        resultType: result.time_frames ? 'rule-based' : result.parsed ? 'ai-based' : 'unknown'
+        resultType: result.time_frames ? 'rule-based' : result.parsed ? 'ai-based' : result.tasks ? 'claude-direct' : 'unknown'
       }, uploadId);
 
       onProgress?.({
         uploadId,
         status: 'processing',
-        progress: 100,
-        message: 'Upload complete, processing...',
+        progress: 90,
+        message: 'Processing Claude response...',
       });
 
-      // Store the backend response for status polling
-      this.storeBackendResponse(uploadId, result);
+      // Process the Claude response immediately
+      const processedResult = this.processBackendResponse(result);
+      
+      logger.info(LogCategory.API_COMMUNICATION, 'UploadManager', 'Claude response processed', {
+        tasksExtracted: processedResult.tasks.length,
+        medicationsExtracted: processedResult.medications.length,
+        restrictionsExtracted: processedResult.restrictions.length,
+        confidence: processedResult.confidence
+      }, uploadId);
+
+      onProgress?.({
+        uploadId,
+        status: 'completed',
+        progress: 100,
+        message: 'Processing complete!',
+        result: processedResult,
+      });
 
       return {
         success: true,
         uploadId,
-        status: 'processing',
-        estimatedTime: '10-30 seconds',
-        statusUrl: `/api/pdf/status/${uploadId}`,
+        status: 'completed',
+        result: processedResult,
       };
 
     } catch (error) {

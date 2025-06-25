@@ -107,8 +107,9 @@ export interface UploadResponse {
   success: boolean;
   uploadId: string;
   status: string;
-  estimatedTime: string;
-  statusUrl: string;
+  estimatedTime?: string;
+  statusUrl?: string;
+  result?: ProcessingResult;
   error?: string;
 }
 

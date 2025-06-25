@@ -9,4 +9,4 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
-// Trigger deployment - 2025-06-23 17:04
+// Force complete redeployment - cache bust all endpoints - 2025-06-25 07:17

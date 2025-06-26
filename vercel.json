@@ -4,7 +4,7 @@
   "installCommand": "cd care-tracker && npm install",
   "framework": "nextjs",
   "functions": {
-    "care-tracker/src/app/api/upload/route.ts": {
+    "src/app/api/upload/route.ts": {
       "maxDuration": 60
     }
   }

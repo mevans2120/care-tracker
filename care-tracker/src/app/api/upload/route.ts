@@ -81,25 +81,45 @@ Extract all care instructions, restrictions, and medications from the PDF. The p
 Return ONLY the JSON object, no other text or explanation.`;
 }
 
-// Call Claude API with PDF
-async function callClaudeWithPdf(base64Content: string, procTime: string): Promise<any> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+// Environment variable retry logic for Vercel cold starts
+async function getApiKeyWithRetry(maxRetries = 3, delay = 1000): Promise<string> {
+  console.log('=== API Key Retry Logic Started ===');
   
-  // Comprehensive environment variable debugging
-  console.log('=== Upload API Environment Variable Debug ===');
-  console.log('API Key present:', !!apiKey);
-  console.log('API Key type:', typeof apiKey);
-  console.log('API Key length:', apiKey?.length || 0);
-  console.log('API Key starts with sk-ant:', apiKey?.startsWith('sk-ant-') || false);
-  console.log('API Key first 20 chars:', apiKey?.substring(0, 20) || 'undefined');
-  console.log('API Key last 10 chars:', apiKey?.substring(apiKey.length - 10) || 'undefined');
+  for (let i = 0; i < maxRetries; i++) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    
+    console.log(`Retry ${i + 1}/${maxRetries}:`);
+    console.log('- API Key present:', !!apiKey);
+    console.log('- API Key type:', typeof apiKey);
+    console.log('- API Key length:', apiKey?.length || 0);
+    console.log('- API Key starts with sk-ant:', apiKey?.startsWith('sk-ant-') || false);
+    console.log('- API Key first 20 chars:', apiKey?.substring(0, 20) || 'undefined');
+    console.log('- API Key last 10 chars:', apiKey?.substring(apiKey.length - 10) || 'undefined');
+    
+    if (apiKey && apiKey.startsWith('sk-ant-')) {
+      console.log('✅ API key successfully retrieved on retry', i + 1);
+      return apiKey;
+    }
+    
+    if (i < maxRetries - 1) {
+      console.log(`⏳ Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  // Final debug info if all retries failed
+  console.log('=== Final Debug Info After All Retries Failed ===');
   console.log('All environment variables starting with ANTHROPIC:',
     Object.keys(process.env).filter(key => key.startsWith('ANTHROPIC')));
   console.log('Deployment timestamp:', new Date().toISOString());
   
-  if (!apiKey) {
-    throw new Error('Missing Anthropic API Key');
-  }
+  throw new Error('API key not available after retries - check Vercel environment variables');
+}
+
+// Call Claude API with PDF
+async function callClaudeWithPdf(base64Content: string, procTime: string): Promise<any> {
+  // Use retry logic instead of direct access
+  const apiKey = await getApiKeyWithRetry();
   
   console.log('Calling Claude API with PDF content...');
   

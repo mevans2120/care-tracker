@@ -2,10 +2,5 @@
   "buildCommand": "cd care-tracker && npm run build",
   "outputDirectory": "care-tracker/.next",
   "installCommand": "cd care-tracker && npm install",
-  "framework": "nextjs",
-  "functions": {
-    "src/app/api/upload/route.ts": {
-      "maxDuration": 60
-    }
-  }
+  "framework": "nextjs"
 }

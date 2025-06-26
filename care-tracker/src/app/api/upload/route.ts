@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Generate a simple UUID
-// Force deployment to pick up updated environment variable
+// Force deployment to pick up updated environment variable - v2
 function generateId(): string {
   return 'task_' + Math.random().toString(36).substr(2, 9);
 }

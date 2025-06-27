@@ -1,0 +1,15 @@
+{
+  "version": "1.0.72",
+  "project": {
+    "name": "codymd-hacknback-main",
+    "type": "claude-flow",
+    "created": "2025-06-27T21:06:46.970Z"
+  },
+  "features": {
+    "swarm": true,
+    "sparc": true,
+    "memory": true,
+    "terminal": true,
+    "mcp": true
+  }
+}

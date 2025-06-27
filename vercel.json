@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd care-tracker && npm run build",
-  "outputDirectory": "care-tracker/.next",
-  "installCommand": "cd care-tracker && npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
   "framework": "nextjs"
 }

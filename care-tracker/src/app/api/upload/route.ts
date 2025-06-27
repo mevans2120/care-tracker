@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Generate a simple UUID
-// Force deployment with fixed vercel.json configuration - v3
+// Force deployment without vercel.json - auto-detect Next.js - v4
 function generateId(): string {
   return 'task_' + Math.random().toString(36).substr(2, 9);
 }

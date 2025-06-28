@@ -58,7 +58,17 @@ export function ProgressView() {
       [TaskType.ACTIVITY_RESTRICTION]: '🚗',
       [TaskType.MONITORING]: '📊',
       [TaskType.EDUCATION]: '📚',
-      [TaskType.OTHER]: '📝'
+      [TaskType.OTHER]: '📝',
+      [TaskType.PHYSICAL_THERAPY]: '🏃',
+      [TaskType.PAIN_MANAGEMENT]: '💉',
+      [TaskType.BREATHING_EXERCISES]: '🫁',
+      [TaskType.MOBILITY]: '🚶‍♂️',
+      [TaskType.BATHING]: '🧼',
+      [TaskType.DRESSING]: '👔',
+      [TaskType.EQUIPMENT_USAGE]: '🔧',
+      [TaskType.FOLLOW_UP]: '📅',
+      [TaskType.SYMPTOM_TRACKING]: '🌡️',
+      [TaskType.POSITIONING]: '🛏️'
     }
     return icons[type] || '📝'
   }
@@ -73,7 +83,17 @@ export function ProgressView() {
       [TaskType.ACTIVITY_RESTRICTION]: 'Restrictions',
       [TaskType.MONITORING]: 'Monitoring',
       [TaskType.EDUCATION]: 'Education',
-      [TaskType.OTHER]: 'Other'
+      [TaskType.OTHER]: 'Other',
+      [TaskType.PHYSICAL_THERAPY]: 'Physical Therapy',
+      [TaskType.PAIN_MANAGEMENT]: 'Pain Management',
+      [TaskType.BREATHING_EXERCISES]: 'Breathing Exercises',
+      [TaskType.MOBILITY]: 'Mobility',
+      [TaskType.BATHING]: 'Bathing',
+      [TaskType.DRESSING]: 'Dressing',
+      [TaskType.EQUIPMENT_USAGE]: 'Equipment Usage',
+      [TaskType.FOLLOW_UP]: 'Follow-up',
+      [TaskType.SYMPTOM_TRACKING]: 'Symptom Tracking',
+      [TaskType.POSITIONING]: 'Positioning'
     }
     return names[type] || 'Other'
   }

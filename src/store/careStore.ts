@@ -32,6 +32,9 @@ interface CareStore {
   
   // Task management
   addTask: (task: CreateCareTaskInput) => void
+  addTasks: (tasks: CreateCareTaskInput[]) => void
+  replaceTasks: (tasks: CreateCareTaskInput[]) => void
+  clearTasks: () => void
   updateTask: (taskId: string, updates: UpdateCareTaskInput) => void
   deleteTask: (taskId: string) => void
   completeTask: (taskId: string) => void
@@ -109,6 +112,20 @@ export const useCareStore = create<CareStore>()(
 
       // Task management
       addTask: (taskInput: CreateCareTaskInput) => {
+        const state = get()
+        
+        // Check for duplicates based on title, description, and scheduled time
+        const isDuplicate = state.tasks.some(existingTask =>
+          existingTask.title === taskInput.title &&
+          existingTask.description === taskInput.description &&
+          Math.abs(new Date(existingTask.scheduledTime).getTime() - new Date(taskInput.scheduledTime).getTime()) < 60000 // Within 1 minute
+        )
+        
+        if (isDuplicate) {
+          console.warn('Duplicate task detected, skipping:', taskInput.title)
+          return
+        }
+        
         const newTask: CareTask = {
           ...taskInput,
           id: crypto.randomUUID(),
@@ -120,6 +137,55 @@ export const useCareStore = create<CareStore>()(
           tasks: [...state.tasks, newTask]
         }))
         
+        get().updateProgressStats()
+      },
+
+      addTasks: (taskInputs: CreateCareTaskInput[]) => {
+        const state = get()
+        const newTasks: CareTask[] = []
+        
+        taskInputs.forEach(taskInput => {
+          // Check for duplicates
+          const isDuplicate = state.tasks.some(existingTask =>
+            existingTask.title === taskInput.title &&
+            existingTask.description === taskInput.description &&
+            Math.abs(new Date(existingTask.scheduledTime).getTime() - new Date(taskInput.scheduledTime).getTime()) < 60000
+          )
+          
+          if (!isDuplicate) {
+            const newTask: CareTask = {
+              ...taskInput,
+              id: crypto.randomUUID(),
+              status: TaskStatus.PENDING,
+              completedTime: undefined
+            }
+            newTasks.push(newTask)
+          }
+        })
+        
+        if (newTasks.length > 0) {
+          set((state) => ({
+            tasks: [...state.tasks, ...newTasks]
+          }))
+          
+          get().updateProgressStats()
+        }
+      },
+
+      replaceTasks: (taskInputs: CreateCareTaskInput[]) => {
+        const newTasks: CareTask[] = taskInputs.map(taskInput => ({
+          ...taskInput,
+          id: crypto.randomUUID(),
+          status: TaskStatus.PENDING,
+          completedTime: undefined
+        }))
+        
+        set({ tasks: newTasks })
+        get().updateProgressStats()
+      },
+
+      clearTasks: () => {
+        set({ tasks: [] })
         get().updateProgressStats()
       },
 

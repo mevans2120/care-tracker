@@ -29,7 +29,7 @@ export interface UsePdfUploadReturn {
 }
 
 export function usePdfUpload(): UsePdfUploadReturn {
-  const { userProfile, setUserProfile, addTask } = useCareStore();
+  const { userProfile, setUserProfile, replaceTasks } = useCareStore();
   const [status, setStatus] = useState<UploadStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ProcessingResult | null>(null);
@@ -141,21 +141,28 @@ export function usePdfUpload(): UsePdfUploadReturn {
           
           // Update store with extracted tasks
           if (uploadStatus.result.tasks.length > 0) {
-            logger.info(LogCategory.STATE_MANAGEMENT, 'usePdfUpload', 'Adding extracted tasks to store', {
+            logger.info(LogCategory.STATE_MANAGEMENT, 'usePdfUpload', 'Replacing store tasks with extracted tasks', {
               taskCount: uploadStatus.result.tasks.length
             }, uploadStatus.uploadId);
             
-            // Clear existing tasks and add new ones
-            // Note: In a real implementation, you might want to merge or replace selectively
-            uploadStatus.result.tasks.forEach((task, index) => {
-              logger.debug(LogCategory.STATE_MANAGEMENT, 'usePdfUpload', 'Adding task to store', {
+            // Expand duration-based tasks into multiple daily tasks
+            const expandedTasks = expandDurationBasedTasks(uploadStatus.result.tasks, uploadStatus.uploadId);
+            
+            logger.info(LogCategory.STATE_MANAGEMENT, 'usePdfUpload', 'Tasks expanded for duration-based restrictions', {
+              originalCount: uploadStatus.result.tasks.length,
+              expandedCount: expandedTasks.length
+            }, uploadStatus.uploadId);
+            
+            // Replace all existing tasks with new ones from PDF
+            const tasksToAdd = expandedTasks.map((task, index) => {
+              logger.debug(LogCategory.STATE_MANAGEMENT, 'usePdfUpload', 'Preparing task for store', {
                 taskIndex: index,
                 taskType: task.type,
                 taskTitle: task.title,
                 actionType: task.actionType
               }, uploadStatus.uploadId);
               
-              addTask({
+              return {
                 type: task.type,
                 title: task.title,
                 description: task.description,
@@ -167,8 +174,10 @@ export function usePdfUpload(): UsePdfUploadReturn {
                 reminders: task.reminders || [],
                 dependencies: task.dependencies || [],
                 metadata: task.metadata,
-              });
+              };
             });
+            
+            replaceTasks(tasksToAdd);
           } else {
             logger.warn(LogCategory.UPLOAD_LIFECYCLE, 'usePdfUpload', 'No tasks extracted from PDF', {}, uploadStatus.uploadId);
           }
@@ -213,7 +222,7 @@ export function usePdfUpload(): UsePdfUploadReturn {
         error: errorMessage,
       });
     }
-  }, [userProfile, addTask, setUserProfile]);
+  }, [userProfile, replaceTasks, setUserProfile]);
 
   const cancel = useCallback(() => {
     logger.info(LogCategory.USER_INTERACTION, 'usePdfUpload', 'Upload cancelled by user', {
@@ -328,4 +337,134 @@ export function useUploadStatus(uploadId: string | null) {
     stopPolling,
     refresh,
   };
+}
+
+// Helper function to detect and expand duration-based tasks
+function expandDurationBasedTasks(tasks: any[], uploadId: string): any[] {
+  const expandedTasks: any[] = [];
+  
+  tasks.forEach((task: any) => {
+    const searchText = task.title + ' ' + task.description;
+    const durationMatch = detectDurationPattern(searchText);
+    
+    // Debug logging for each task
+    logger.debug(LogCategory.STATE_MANAGEMENT, 'expandDurationBasedTasks', 'Analyzing task for duration patterns', {
+      taskId: task.id,
+      taskTitle: task.title,
+      taskDescription: task.description,
+      searchText: searchText,
+      foundDuration: !!durationMatch,
+      durationDays: durationMatch?.days,
+      durationPattern: durationMatch?.pattern
+    }, uploadId);
+    
+    if (durationMatch && durationMatch.days > 1) {
+      logger.info(LogCategory.STATE_MANAGEMENT, 'expandDurationBasedTasks', 'Expanding duration-based task', {
+        originalTitle: task.title,
+        detectedDuration: durationMatch.days,
+        durationPattern: durationMatch.pattern
+      }, uploadId);
+      
+      // Create multiple daily tasks for the duration
+      for (let day = 1; day <= durationMatch.days; day++) {
+        const scheduledTime = new Date(task.scheduledTime);
+        scheduledTime.setDate(scheduledTime.getDate() + (day - 1));
+        
+        const expandedTask = {
+          ...task,
+          id: `${task.id}_day_${day}`,
+          title: `${task.title} - Day ${day} of ${durationMatch.days}`,
+          description: `${task.description} (Day ${day} of ${durationMatch.days} total)`,
+          scheduledTime: scheduledTime,
+          metadata: {
+            ...task.metadata,
+            expandedFromOriginal: task.id,
+            dayNumber: day,
+            totalDays: durationMatch.days,
+            durationPattern: durationMatch.pattern
+          }
+        };
+        
+        expandedTasks.push(expandedTask);
+      }
+    } else {
+      // Keep original task as-is if no duration pattern detected
+      expandedTasks.push(task);
+    }
+  });
+  
+  return expandedTasks;
+}
+
+// Helper function to detect duration patterns in text
+function detectDurationPattern(text: string): { days: number; pattern: string } | null {
+  const lowerText = text.toLowerCase();
+  
+  // Pattern types
+  type MultiplierPattern = { regex: RegExp; multiplier: number };
+  type FixedPattern = { regex: RegExp; days: number };
+  
+  // Common duration patterns - expanded to catch more variations
+  const multiplierPatterns: MultiplierPattern[] = [
+    { regex: /for\s+(\d+)\s+days?/i, multiplier: 1 },
+    { regex: /for\s+(\d+)\s+weeks?/i, multiplier: 7 },
+    { regex: /(\d+)\s+days?/i, multiplier: 1 },
+    { regex: /(\d+)\s+weeks?/i, multiplier: 7 },
+    { regex: /during\s+the\s+next\s+(\d+)\s+days?/i, multiplier: 1 },
+    { regex: /over\s+the\s+next\s+(\d+)\s+days?/i, multiplier: 1 },
+    { regex: /throughout\s+(\d+)\s+days?/i, multiplier: 1 },
+    { regex: /limit.*for\s+(\d+)\s+days?/i, multiplier: 1 },
+    { regex: /avoid.*for\s+(\d+)\s+days?/i, multiplier: 1 },
+    { regex: /restrict.*for\s+(\d+)\s+days?/i, multiplier: 1 },
+  ];
+  
+  const fixedPatterns: FixedPattern[] = [
+    { regex: /for\s+one\s+week/i, days: 7 },
+    { regex: /for\s+two\s+weeks?/i, days: 14 },
+    { regex: /for\s+three\s+weeks?/i, days: 21 },
+    { regex: /for\s+a\s+week/i, days: 7 },
+    { regex: /for\s+1\s+week/i, days: 7 },
+    { regex: /for\s+2\s+weeks?/i, days: 14 },
+    { regex: /for\s+3\s+weeks?/i, days: 21 },
+    { regex: /for\s+48\s+hours?/i, days: 2 },
+    { regex: /for\s+72\s+hours?/i, days: 3 },
+    { regex: /until\s+healing/i, days: 7 }, // Common in wound care
+    { regex: /during\s+recovery/i, days: 7 }, // Common recovery phrase
+    { regex: /while\s+healing/i, days: 7 }, // Another healing phrase
+    { regex: /until\s+cleared\s+by\s+doctor/i, days: 14 }, // Medical clearance
+  ];
+  
+  // Check multiplier patterns first
+  for (const pattern of multiplierPatterns) {
+    const match = lowerText.match(pattern.regex);
+    if (match && match[1]) {
+      const days = parseInt(match[1]) * pattern.multiplier;
+      
+      // Only expand for reasonable durations (2-30 days)
+      if (days >= 2 && days <= 30) {
+        return {
+          days,
+          pattern: match[0]
+        };
+      }
+    }
+  }
+  
+  // Check fixed patterns
+  for (const pattern of fixedPatterns) {
+    const match = lowerText.match(pattern.regex);
+    if (match) {
+      const days = pattern.days;
+      
+      // Only expand for reasonable durations (2-30 days)
+      if (days >= 2 && days <= 30) {
+        return {
+          days,
+          pattern: match[0]
+        };
+      }
+    }
+  }
+  
+  return null;
 }

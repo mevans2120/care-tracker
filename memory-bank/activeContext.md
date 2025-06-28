@@ -664,3 +664,38 @@ The issue is NOT configuration-related but API key validity:
   * Configuration: ✅ vercel.json already root-ready
 
 **MIGRATION STATUS: Phase 1 ✅ | Phase 2 ✅ | Phase 3 🔄 (Ready to start)**
+
+[2025-01-28 08:54:00] - **MIGRATION PROJECT COMPLETED**: Next.js Care Tracker migration from subdirectory to root structure successfully completed
+- All three phases executed successfully (File System, Configuration, Deployment)
+- Clean deployment branch pushed to GitHub (clean-deploy)
+- Application ready for production deployment via Vercel
+- Project status: COMPLETE
+
+[2025-06-28 09:11:25] - **PDF Extraction Analysis Completed**: Identified critical issues in Care Tracker PDF analyzer causing incomplete activity extraction:
+- Limited 9-category TaskType system misses complex medical activities
+- Generic extraction prompt lacks activity-specific guidance  
+- No hierarchy/priority system for different activity types
+- Missing extraction patterns for physical therapy, daily care, monitoring activities
+- Recommended enhanced prompt with specific activity categories and validation logic
+
+[2025-06-28 09:16:35] - **Enhanced PDF Extraction Implementation Completed**: 
+- Expanded TaskType enum from 9 to 20 categories including physical_therapy, mobility, bathing, dressing, pain_management, breathing_exercises, equipment_usage, follow_up, symptom_tracking, positioning
+- Enhanced buildPromptWithPdf() with comprehensive activity extraction guidelines for Physical Activities, Daily Care Activities, Health Monitoring, and Scheduled Activities
+- Updated AllTasksView component with icons and filter options for all new task types
+- Added detailed task classification guidelines for timing, categories, and action types
+- Ready for testing with sample PDFs to validate improved extraction coverage
+
+[2025-06-28 09:24:00] - **TIMELINE SCHEDULING FIX IMPLEMENTED**
+- Issue: Tasks with time-specific requirements (e.g., "Do not drive for 24 hours", "Do not shower until the next day") were all being scheduled at the same procedure time instead of being distributed across the recovery timeline
+- Root Cause: The extraction prompt lacked specific guidelines for calculating scheduledTime based on timing phrases in the PDF content
+- Solution: Enhanced the buildPromptWithPdf() function with comprehensive timeline scheduling guidelines and specific patterns for time calculation
+- Added examples for proper timeline distribution: "for 24 hours" → +24 hours, "until next day" → +1 day, "for 1 week" → +7 days
+- This ensures activities are properly spread across the weeklong (and longer) recovery timeline as intended
+
+[2025-06-28 09:28:00] - **TIMELINE NAVIGATION FIX IMPLEMENTED**
+- Issue: Users couldn't navigate between days - arrow buttons were inactive
+- Root Cause: Navigation arrows had no click handlers, left arrow was disabled, tasks filtered by hardcoded "today" instead of selectedDate state
+- Solution: Added proper onClick handlers for both navigation arrows, removed disabled attribute, changed task filtering to use selectedDate state
+- Additional Fix: Updated getTaskTypeIcon function to include all new task types to resolve TypeScript compilation error
+- Result: Users can now navigate between days and see tasks scheduled for different dates based on the timeline scheduling improvements
+[2025-06-28 09:39:00] - **SCROLLABLE TIMELINE IMPLEMENTATION COMPLETED**: Successfully implemented and tested the scrollable timeline interface replacing click-based navigation. Timeline now displays days sequentially as user scrolls down, with Day 1 (Today), Day 2 (Tomorrow), etc. appearing in chronological order. Visual design maintained with proper day section headers, task organization, and interactive elements.

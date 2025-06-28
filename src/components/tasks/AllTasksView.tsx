@@ -43,6 +43,17 @@ export function AllTasksView() {
       [TaskType.ACTIVITY_RESTRICTION]: '🚗',
       [TaskType.MONITORING]: '📊',
       [TaskType.EDUCATION]: '📚',
+      // Enhanced activity types
+      [TaskType.PHYSICAL_THERAPY]: '🧘',
+      [TaskType.MOBILITY]: '🚶‍♂️',
+      [TaskType.BATHING]: '🛁',
+      [TaskType.DRESSING]: '👕',
+      [TaskType.PAIN_MANAGEMENT]: '💆',
+      [TaskType.BREATHING_EXERCISES]: '🌬️',
+      [TaskType.EQUIPMENT_USAGE]: '🦽',
+      [TaskType.FOLLOW_UP]: '📞',
+      [TaskType.SYMPTOM_TRACKING]: '📈',
+      [TaskType.POSITIONING]: '🛏️',
       [TaskType.OTHER]: '📝'
     }
     return icons[type] || '📝'

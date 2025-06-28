@@ -8,7 +8,7 @@ function generateId(): string {
 
 // Build prompt for Claude API with PDF processing - using exact TypeScript interfaces
 function buildPromptWithPdf(base64Content: string, procTime: string = "2025-06-24T08:00:00Z"): string {
-  return `Read the provided PDF file and extract medical discharge instructions. Return ONLY a valid JSON object that matches this exact TypeScript interface:
+  return `Read the provided PDF file and extract ALL medical discharge instructions and recovery activities. Return ONLY a valid JSON object that matches this exact TypeScript interface:
 
 interface ProcessingResult {
   tasks: CareTask[];
@@ -23,7 +23,7 @@ interface CareTask {
   id: string;
   title: string;
   description: string;
-  type: "medication" | "appointment" | "exercise" | "wound_care" | "diet" | "activity_restriction" | "monitoring" | "education" | "other";
+  type: "medication" | "appointment" | "exercise" | "wound_care" | "diet" | "activity_restriction" | "monitoring" | "education" | "physical_therapy" | "mobility" | "bathing" | "dressing" | "pain_management" | "breathing_exercises" | "equipment_usage" | "follow_up" | "symptom_tracking" | "positioning" | "other";
   status: "pending" | "in_progress" | "completed" | "skipped" | "overdue";
   actionType: "do" | "do_not";
   scheduledTime: string; // ISO date string
@@ -76,8 +76,89 @@ interface Restriction {
   consequences?: string;
 }
 
-Extract all care instructions, restrictions, and medications from the PDF. The procedure time is: ${procTime}
+Extract ALL recovery and care activities from this medical discharge PDF. Be comprehensive and thorough. Look for:
 
+**PHYSICAL ACTIVITIES:**
+- Physical therapy exercises, stretches, movement restrictions (type: "physical_therapy")
+- Mobility instructions: walking, sitting, standing limitations (type: "mobility")
+- Positioning requirements: elevation, sleeping positions (type: "positioning")
+- General exercise routines and fitness activities (type: "exercise")
+
+**DAILY CARE ACTIVITIES:**
+- Bathing/showering instructions and restrictions (type: "bathing")
+- Dressing assistance or clothing restrictions (type: "dressing")
+- Wound care procedures: cleaning, dressing changes (type: "wound_care")
+- Equipment usage: crutches, braces, monitors, assistive devices (type: "equipment_usage")
+
+**HEALTH MONITORING:**
+- Symptom tracking: pain levels, swelling, temperature (type: "symptom_tracking")
+- Vital sign monitoring requirements (type: "monitoring")
+- Warning sign recognition and response (type: "monitoring")
+- Pain management techniques and schedules (type: "pain_management")
+- Breathing exercises and respiratory care (type: "breathing_exercises")
+
+**SCHEDULED ACTIVITIES:**
+- Medical appointments and follow-up visits (type: "appointment" or "follow_up")
+- Medication schedules and administration (type: "medication")
+- Dietary instructions and restrictions (type: "diet")
+- Activity restrictions and limitations (type: "activity_restriction")
+- Educational materials to review (type: "education")
+
+**TASK CLASSIFICATION AND TIMELINE GUIDELINES:**
+- Use "immediate" category for first 24 hours post-procedure
+- Use "short_term" for 1-7 days recovery activities
+- Use "medium_term" for 1-4 weeks rehabilitation
+- Use "long_term" for ongoing maintenance (1+ months)
+- Set actionType to "do" for recommended activities, "do_not" for restrictions
+- Estimate realistic duration for each task (5-60 minutes typical)
+- Include specific instructions and timing when mentioned in PDF
+
+**CRITICAL: CREATE COMPREHENSIVE TIMELINE SPANNING FULL DURATION:**
+
+The procedure time is: ${procTime}
+
+**FOR DURATION-BASED RESTRICTIONS (activities to avoid for a period), CREATE MULTIPLE DAILY TASKS:**
+
+When you see restrictions lasting multiple days, create separate tasks for EACH DAY of the restriction period:
+
+- "Do not drive for 7 days" → Create 7 separate tasks, one for each day:
+  * Day 1: "No Driving - Day 1 of 7" (scheduledTime: procedure time)
+  * Day 2: "No Driving - Day 2 of 7" (scheduledTime: procedure time + 1 day)
+  * Day 3: "No Driving - Day 3 of 7" (scheduledTime: procedure time + 2 days)
+  * ... and so on for all 7 days
+
+- "Do not shower for 48 hours" → Create 2 separate tasks:
+  * Day 1: "No Showering - Day 1 of 2" (scheduledTime: procedure time)
+  * Day 2: "No Showering - Day 2 of 2" (scheduledTime: procedure time + 1 day)
+
+- "No heavy lifting for 2 weeks" → Create 14 separate daily tasks spanning the full period
+
+**FOR SINGLE-POINT EVENTS, schedule them when they should occur:**
+- "Follow up in 2 weeks" → scheduledTime: procedure time + 14 days
+- "Start physical therapy in 3 days" → scheduledTime: procedure time + 3 days
+- "Remove bandage tomorrow" → scheduledTime: procedure time + 1 day
+
+**EXAMPLES of comprehensive timeline creation:**
+
+RESTRICTION: "Do not take tub baths for 1 week"
+CREATE: 7 separate tasks:
+- "No Tub Baths - Day 1 of 7" (scheduledTime: procedure time)
+- "No Tub Baths - Day 2 of 7" (scheduledTime: procedure time + 1 day)
+- "No Tub Baths - Day 3 of 7" (scheduledTime: procedure time + 2 days)
+- "No Tub Baths - Day 4 of 7" (scheduledTime: procedure time + 3 days)
+- "No Tub Baths - Day 5 of 7" (scheduledTime: procedure time + 4 days)
+- "No Tub Baths - Day 6 of 7" (scheduledTime: procedure time + 5 days)
+- "No Tub Baths - Day 7 of 7" (scheduledTime: procedure time + 6 days)
+
+RESTRICTION: "Limit activity for 3 days"
+CREATE: 3 separate tasks:
+- "Limited Activity - Day 1 of 3" (scheduledTime: procedure time)
+- "Limited Activity - Day 2 of 3" (scheduledTime: procedure time + 1 day)
+- "Limited Activity - Day 3 of 3" (scheduledTime: procedure time + 2 days)
+
+This ensures patients see their restrictions every day they apply, creating a complete recovery timeline.
+
+Extract EVERY activity mentioned, no matter how minor. Be thorough and comprehensive.
 Return ONLY the JSON object, no other text or explanation.`;
 }
 
@@ -290,8 +371,10 @@ export async function POST(request: NextRequest) {
     const base64Content = fileData.base64Content;
     console.log(`Base64 content length: ${base64Content.length} characters`);
     
-    // Step 3: Use Claude to read PDF and extract tasks directly
-    const procTime = new Date().toISOString();
+    // Step 3: Use user's actual procedure time from their profile
+    const userProfile = data.userProfile;
+    const procTime = userProfile?.dischargeDate || new Date().toISOString();
+    console.log(`Using procedure time: ${procTime} (from user profile: ${!!userProfile?.dischargeDate})`);
     const claudeResponse = await callClaudeWithPdf(base64Content, procTime);
     
     // Step 4: Parse Claude response

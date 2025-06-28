@@ -20,8 +20,6 @@ export function TimelineView() {
     updateProgressStats
   } = useCareStore()
   
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [viewMode, setViewMode] = useState<'hourly' | 'daily'>('hourly')
   const [emergencyOpen, setEmergencyOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { toasts, removeToast, success, info } = useToast()
@@ -30,19 +28,43 @@ export function TimelineView() {
     updateProgressStats()
   }, [tasks, updateProgressStats])
 
-  const todayTasks = tasks.filter(task => {
-    const taskDate = new Date(task.scheduledTime)
-    const today = new Date()
-    return taskDate.toDateString() === today.toDateString()
-  })
+  // Group tasks by day for scrollable timeline
+  const groupTasksByDay = () => {
+    const grouped: { [key: string]: any[] } = {}
+    
+    tasks.forEach(task => {
+      const taskDate = new Date(task.scheduledTime)
+      const dateKey = taskDate.toDateString()
+      
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = []
+      }
+      grouped[dateKey].push(task)
+    })
+    
+    // Sort tasks within each day
+    Object.keys(grouped).forEach(dateKey => {
+      grouped[dateKey].sort((a, b) => new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime())
+    })
+    
+    return grouped
+  }
 
-  const allDayTasks = todayTasks.filter(task =>
-    task.type === TaskType.ACTIVITY_RESTRICTION
-  )
-
-  const timedTasks = todayTasks.filter(task =>
-    task.type !== TaskType.ACTIVITY_RESTRICTION
-  ).sort((a, b) => new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime())
+  const tasksByDay = groupTasksByDay()
+  const sortedDays = Object.keys(tasksByDay).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+  
+  // Calculate day number for each date (Day 1 = procedure day)
+  const getDayNumber = (dateString: string) => {
+    if (!userProfile) return 1
+    const taskDate = new Date(dateString)
+    const dischargeDate = new Date(userProfile.dischargeDate)
+    
+    // Set both dates to start of day for proper day calculation
+    const taskDateStart = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate())
+    const dischargeDateStart = new Date(dischargeDate.getFullYear(), dischargeDate.getMonth(), dischargeDate.getDate())
+    
+    return Math.floor((taskDateStart.getTime() - dischargeDateStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  }
 
   const handleCompleteTask = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId)
@@ -69,6 +91,16 @@ export function TimelineView() {
       [TaskType.ACTIVITY_RESTRICTION]: <Car {...iconProps} />,
       [TaskType.MONITORING]: <ChartLine {...iconProps} />,
       [TaskType.EDUCATION]: <Books {...iconProps} />,
+      [TaskType.PHYSICAL_THERAPY]: <Person {...iconProps} />,
+      [TaskType.MOBILITY]: <Person {...iconProps} />,
+      [TaskType.BATHING]: <Shower {...iconProps} />,
+      [TaskType.DRESSING]: <Person {...iconProps} />,
+      [TaskType.PAIN_MANAGEMENT]: <Pill {...iconProps} />,
+      [TaskType.BREATHING_EXERCISES]: <Person {...iconProps} />,
+      [TaskType.EQUIPMENT_USAGE]: <Gear {...iconProps} />,
+      [TaskType.FOLLOW_UP]: <FirstAid {...iconProps} />,
+      [TaskType.SYMPTOM_TRACKING]: <ChartLine {...iconProps} />,
+      [TaskType.POSITIONING]: <Person {...iconProps} />,
       [TaskType.OTHER]: <NotePencil {...iconProps} />
     }
     return icons[type] || <NotePencil {...iconProps} />
@@ -114,7 +146,20 @@ export function TimelineView() {
     )
   }
 
-  const daysSinceProcedure = Math.floor((Date.now() - new Date(userProfile.dischargeDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+  // Calculate current day since procedure (Day 1 = procedure day)
+  const getCurrentDaySinceProcedure = () => {
+    if (!userProfile) return 1
+    const now = new Date()
+    const dischargeDate = new Date(userProfile.dischargeDate)
+    
+    // Set both dates to start of day for proper day calculation
+    const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const dischargeDateStart = new Date(dischargeDate.getFullYear(), dischargeDate.getMonth(), dischargeDate.getDate())
+    
+    return Math.floor((nowStart.getTime() - dischargeDateStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  }
+  
+  const daysSinceProcedure = getCurrentDaySinceProcedure()
 
   return (
     <div className="timeline-container">
@@ -137,7 +182,7 @@ export function TimelineView() {
           <div className="progress-fill" style={{ width: `${progressStats.completionRate}%` }}></div>
         </div>
         <div className="progress-text">
-          Day {daysSinceProcedure} of 7 - {daysSinceProcedure === 1 ? 'First 24 hours are critical' : 'Recovery in progress'}
+          Day {daysSinceProcedure} of 7 - {daysSinceProcedure === 1 ? 'Procedure day - First 24 hours are critical' : daysSinceProcedure === 2 ? 'First day post-procedure' : 'Recovery in progress'}
         </div>
       </div>
 
@@ -173,133 +218,93 @@ export function TimelineView() {
         )}
       </div>
 
-      {/* Timeline Controls */}
-      <div className="timeline-controls">
-        <div className="date-selector">
-          <button className="date-btn" disabled>←</button>
-          <div className="current-date">Today (Day {daysSinceProcedure})</div>
-          <button className="date-btn">→</button>
-        </div>
-        <div className="view-toggle">
-          <button
-            className={`view-btn ${viewMode === 'hourly' ? 'active' : ''}`}
-            onClick={() => setViewMode('hourly')}
-          >
-            Hourly
-          </button>
-          <button
-            className={`view-btn ${viewMode === 'daily' ? 'active' : ''}`}
-            onClick={() => setViewMode('daily')}
-          >
-            Daily
-          </button>
-        </div>
-      </div>
-
-      {/* Timeline */}
-      <div className="timeline">
+      {/* Scrollable Timeline */}
+      <div className="scrollable-timeline">
         <div className="timeline-line"></div>
         
-        {/* Day Summary */}
-        <div className="day-summary">
-          <h3>First 24 Hours - Critical Recovery Period</h3>
-          <p style={{ fontSize: '14px', opacity: 0.9 }}>You must have someone stay with you today</p>
-          <div className="summary-stats">
-            <div className="stat">
-              <div className="stat-number">8</div>
-              <div className="stat-label">Glasses of Water</div>
-            </div>
-            <div className="stat">
-              <div className="stat-number">24h</div>
-              <div className="stat-label">No Driving</div>
-            </div>
-            <div className="stat">
-              <div className="stat-number">10lbs</div>
-              <div className="stat-label">Max Lifting</div>
-            </div>
-          </div>
-        </div>
-
-        {/* All Day Restrictions */}
-        {allDayTasks.length > 0 && (
-          <div className="all-day-section">
-            <div className="all-day-header">
-              <Clock size={20} weight="fill" />
-              All Day Restrictions (Next 24 Hours)
-            </div>
-            {allDayTasks.map((task) => (
-              <ActivityCard
-                key={task.id}
-                task={task}
-                onComplete={handleCompleteTask}
-                onSkip={handleSkipTask}
-                getTaskTypeIcon={getTaskTypeIcon}
-                getActivityCardClass={getActivityCardClass}
-                getActivityIconClass={getActivityIconClass}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Hourly Timeline */}
-        {viewMode === 'hourly' && timedTasks.map((task) => {
-          const taskTime = new Date(task.scheduledTime)
-          const hour = taskTime.getHours()
+        {sortedDays.map((dateString, dayIndex) => {
+          const dayNumber = getDayNumber(dateString)
+          const date = new Date(dateString)
+          const isToday = date.toDateString() === new Date().toDateString()
+          const isPast = date < new Date() && !isToday
+          const tasksForDay = tasksByDay[dateString]
           
           return (
-            <div key={task.id} className="time-marker">
-              <div className="time-label">{formatTime(taskTime)}</div>
-              <div className={getTimeMarkerClass(hour)}></div>
-              
-              <ActivityCard
-                task={task}
-                onComplete={handleCompleteTask}
-                onSkip={handleSkipTask}
-                getTaskTypeIcon={getTaskTypeIcon}
-                getActivityCardClass={getActivityCardClass}
-                getActivityIconClass={getActivityIconClass}
-              />
+            <div key={dateString} className="day-section">
+              {/* Day Header */}
+              <div className={`day-header ${isToday ? 'today' : isPast ? 'past' : 'future'}`}>
+                <div className="day-marker">
+                  <div className={`day-dot ${isToday ? 'current' : isPast ? 'completed' : 'upcoming'}`}>
+                    {dayNumber}
+                  </div>
+                </div>
+                <div className="day-info">
+                  <h3>
+                    {isToday ? `Today - Day ${dayNumber}` :
+                     dayNumber === 1 ? `Procedure Day` :
+                     `Day ${dayNumber}`}
+                  </h3>
+                  <p className="day-date">
+                    {date.toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  {dayNumber === 1 && (
+                    <div className="day-summary">
+                      <p style={{ fontSize: '14px', opacity: 0.9, marginTop: '8px' }}>
+                        Procedure day - Critical first 24 hours - You must have someone stay with you
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Tasks for this day */}
+              <div className="day-tasks">
+                {tasksForDay.map((task) => {
+                  const taskTime = new Date(task.scheduledTime)
+                  
+                  return (
+                    <div key={task.id} className="task-in-timeline">
+                      <div className="task-time">
+                        {formatTime(taskTime)}
+                      </div>
+                      <div className="task-content">
+                        <ActivityCard
+                          task={task}
+                          onComplete={handleCompleteTask}
+                          onSkip={handleSkipTask}
+                          getTaskTypeIcon={getTaskTypeIcon}
+                          getActivityCardClass={getActivityCardClass}
+                          getActivityIconClass={getActivityIconClass}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+                
+                {tasksForDay.length === 0 && (
+                  <div className="no-tasks">
+                    <p style={{ opacity: 0.6, fontStyle: 'italic' }}>
+                      No specific activities scheduled for this day
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}
-
-        {/* Daily View */}
-        {viewMode === 'daily' && (
-          <div className="time-marker">
-            <div className="time-label">Today</div>
-            <div className="time-dot current"></div>
-            
-            {timedTasks.map((task) => (
-              <ActivityCard
-                key={task.id}
-                task={task}
-                onComplete={handleCompleteTask}
-                onSkip={handleSkipTask}
-                getTaskTypeIcon={getTaskTypeIcon}
-                getActivityCardClass={getActivityCardClass}
-                getActivityIconClass={getActivityIconClass}
-              />
-            ))}
+        
+        {/* End of timeline message */}
+        <div className="timeline-end">
+          <div className="day-marker">
+            <div className="day-dot completed">✓</div>
           </div>
-        )}
-
-        {/* Tomorrow Preview */}
-        <div className="time-marker" style={{ opacity: 0.5 }}>
-          <div className="time-label">Tomorrow</div>
-          <div className="time-dot"></div>
-          
-          <div className="activity-card can-do">
-            <div className="activity-header">
-              <div className="activity-title">
-                <div className="activity-icon icon-can">
-                  <Shower size={20} weight="fill" />
-                </div>
-                First Shower (24h)
-              </div>
-            </div>
-            <div className="activity-description">
-              After 24 hours, you can shower. Remove bandage, wash with mild soap, pat dry, apply new bandage.
-            </div>
+          <div className="end-message">
+            <h3>Recovery Complete!</h3>
+            <p>Continue following your doctor's long-term care instructions</p>
           </div>
         </div>
       </div>

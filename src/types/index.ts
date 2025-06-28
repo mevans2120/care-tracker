@@ -122,6 +122,17 @@ export enum TaskType {
   ACTIVITY_RESTRICTION = 'activity_restriction',
   MONITORING = 'monitoring',
   EDUCATION = 'education',
+  // Enhanced activity types for comprehensive extraction
+  PHYSICAL_THERAPY = 'physical_therapy',
+  MOBILITY = 'mobility',
+  BATHING = 'bathing',
+  DRESSING = 'dressing',
+  PAIN_MANAGEMENT = 'pain_management',
+  BREATHING_EXERCISES = 'breathing_exercises',
+  EQUIPMENT_USAGE = 'equipment_usage',
+  FOLLOW_UP = 'follow_up',
+  SYMPTOM_TRACKING = 'symptom_tracking',
+  POSITIONING = 'positioning',
   OTHER = 'other'
 }
 

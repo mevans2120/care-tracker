@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "functions": {
+    "src/app/api/upload/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "ANTHROPIC_API_KEY": "@ANTHROPIC_API_KEY"
+  }
+}

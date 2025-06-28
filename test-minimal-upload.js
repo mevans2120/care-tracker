@@ -19,7 +19,7 @@ async function testMinimalUpload() {
     const postData = JSON.stringify(minimalPayload);
     
     const options = {
-      hostname: 'care-tracker.vercel.app',
+      hostname: 'care-tracker-v0.vercel.app',
       port: 443,
       path: '/api/upload',
       method: 'POST',

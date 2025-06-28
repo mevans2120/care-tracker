@@ -44,7 +44,7 @@ async function testProductionPdfUpload() {
   console.log('🚀 Sending request to production API...');
   
   try {
-    const response = await fetch('https://care-tracker.vercel.app/api/upload', {
+    const response = await fetch('https://care-tracker-v0.vercel.app/api/upload', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

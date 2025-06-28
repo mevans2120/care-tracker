@@ -3,7 +3,7 @@ const https = require('https');
 console.log('🧪 Testing Environment Variable Endpoint...');
 
 const options = {
-  hostname: 'care-tracker-eight-rho.vercel.app',
+  hostname: 'care-tracker-v0.vercel.app',
   port: 443,
   path: '/api/test-env',
   method: 'GET',

@@ -90,7 +90,7 @@ The [`vercel.json`](vercel.json) file includes:
 
 Once deployed, your PDF processing API will be available at:
 ```
-https://your-app-name.vercel.app/api/upload
+https://care-tracker-v0.vercel.app/api/upload
 ```
 
 ## Testing the Deployment
@@ -162,7 +162,7 @@ https://your-app-name.vercel.app/api/upload
 
 3. **Test API Directly**:
    ```bash
-   curl -X POST https://your-app.vercel.app/api/upload \
+   curl -X POST https://care-tracker-v0.vercel.app/api/upload \
      -H "Content-Type: application/json" \
      -d '{"uploadMetadata":{"uploadId":"test","fileName":"test.pdf"},"fileData":{"base64Content":"..."}}'
    ```

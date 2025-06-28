@@ -5,7 +5,7 @@ const fs = require('fs');
 async function getApiKeyFromTestEndpoint() {
   return new Promise((resolve, reject) => {
     const options = {
-      hostname: 'care-tracker.vercel.app',
+      hostname: 'care-tracker-v0.vercel.app',
       port: 443,
       path: '/api/test-env',
       method: 'GET',

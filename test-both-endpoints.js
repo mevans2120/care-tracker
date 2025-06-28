@@ -3,7 +3,7 @@ const https = require('https');
 async function testEndpoint(path, method = 'GET', body = null) {
   return new Promise((resolve, reject) => {
     const options = {
-      hostname: 'care-tracker.vercel.app',
+      hostname: 'care-tracker-v0.vercel.app',
       port: 443,
       path: path,
       method: method,
